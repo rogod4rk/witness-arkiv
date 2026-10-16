@@ -6,17 +6,19 @@ Tamper-evident, private audit logs on [Arkiv](https://arkiv.network), the Web3 d
 
 A company's admin audit trail (who granted whom access, who rotated a key, who ran an export) normally sits in a database that an administrator can edit. After a breach or an insider incident, the first thing that goes missing is the log. Auditors, incident responders and regulators have to trust an export from the very operator they are checking. Putting the log on a public chain fixes that, but then every actor name and action is exposed to the world.
 
-Witness gives the auditor a log that cannot be changed or truncated without the check failing, and gives the public nothing readable.
+Witness makes the log tamper-evident: against everyone but the writer, an edit, deletion or forged copy fails the check. Against the writer, it holds once an auditor has pinned a checkpoint (an expected head). Without a pinned checkpoint the writer could delete entries and seals and re-append a different history that still verifies. The public sees nothing readable.
 
 ## How it works
 
 - Each event is encrypted in the browser with AES-256-GCM. The key never leaves the client and travels only in the URL fragment of a share link.
 - Each ciphertext is chained: `chain(n) = keccak256(chain(n-1) | seq | keccak256(payload))`.
-- Each event becomes an Arkiv entity with the flags `readonly` (attributes and payload frozen) and `permissionlessExtension` (anyone can keep it alive, nobody can alter it).
+- Each event becomes an Arkiv entity with the flags `readonly` (attributes and payload frozen) and `permissionlessExtension` (anyone can extend its lifetime, not just its owner; the content stays frozen).
 - Every append is one atomic `executeBatch`: the new entries plus a seal (`anchor`) over the new head.
-- The auditor opens the app with a writer address and a log id. The app reads with `createdBy(writer)`, so look-alike entities written by other wallets are ignored and counted. It recomputes the chain, checks the seals and, with the key, decrypts.
+- The auditor opens the app with a writer address and a log id. The app reads with `createdBy(writer)`, so look-alike entities written by other wallets are ignored and counted. Both queries are pinned to one block. It recomputes the chain, checks the seals, checks that every trusted row is read-only and was never patched, and, with the key, decrypts.
+- Auditor checkpoint: the verifier can pin an expected head (`seq:hash`). The app remembers the last intact head per log in `localStorage`, has a field to paste one, and the share link carries it (`c=`). If the chain no longer contains that exact hash at that seq, the verdict is "history rewritten since checkpoint".
+- Normal expiry is not tampering: entries missing whose seal is older than 14 days are reported as "expired (normal)", and the next append continues from the newest seal.
 
-What the explorer shows: random log id, a counter, a hash, ciphertext. No names, no actions.
+What the explorer shows: five attributes (`project`, `type`, a random `log` id, a `seq` counter, a `chain` hash) and ciphertext. No names, no actions.
 
 | Arkiv feature | Used for | Where |
 |---|---|---|
@@ -72,7 +74,10 @@ You can also paste any writer address and log id into the "Audit a log" box of t
 
 - Data is synthetic. Do not log real personal data. It is encrypted, but Arkiv entities are public and permanent in practice for the life of the entry.
 - Keys and plaintext never go on Arkiv. The browser key is a throwaway testnet key kept in `localStorage`.
-- Limits: the owner of an entity can still delete it before expiry. Deletion is detected (gap or seal mismatch) but not prevented. If the very last entries and the seal are all deleted together, the log looks like a shorter valid log; the auditor should record the head `seq` and `chain` out of band (the verdict shows both).
+- Limits: the owner of an entity can still delete it before expiry. Deletion is detected (gap or seal mismatch) but not prevented.
+- Seals are writer-owned, so a writer who deletes entries and seals and re-appends passes verification until an auditor has pinned a checkpoint. Pin one early; the verdict shows the head to record.
+- A checkpoint only covers history up to its seq. After entries and seals both age out (90 days) a checkpoint at that seq can no longer be matched and fails.
+- Appends are read-then-write with no compare-and-swap, so two concurrent writers can fork the chain. A fork is detected, not prevented (not fixed here).
 
 ## Layout
 
