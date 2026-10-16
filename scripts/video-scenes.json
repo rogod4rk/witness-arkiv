@@ -5,7 +5,7 @@
     "Witness fixes that without publishing anything readable."
   ]},
   { "id": "explorer", "view": "explorer", "say": [
-    "Here is one entry on Arkiv's explorer. Three attributes: a random log id, a counter, and a hash.",
+    "Here is one entry on Arkiv's explorer. Five attributes: a project name, a type, a random log id, a counter, and a hash.",
     "The payload is ciphertext. No names, no actions. The key never touched a server, it is in the URL fragment of the share link."
   ]},
   { "id": "audit", "view": "audit", "say": [
@@ -13,15 +13,15 @@
     "It filters by creator, the immutable on-chain creator, so it only trusts entities that wallet wrote.",
     "It recomputes the hash chain from genesis. With the key, the entries decrypt. Without it, they are just bytes."
   ]},
-  { "id": "tamper", "view": "audit", "say": [
+  { "id": "tamper", "view": "tamper", "say": [
     "Anyone can copy our attributes onto their own entity. A look-alike from another wallet is ignored and counted, because its creator is not the writer.",
     "Entries are read-only, so nobody can patch them. The owner could still delete one, and the check shows a gap at that sequence number.",
-    "The seal catches a deleted tail too."
+    "The seal catches a deleted tail too. The writer could still rewrite history and re-seal it, so an auditor pins a checkpoint, an expected head, and the check fails if that hash ever disappears."
   ]},
   { "id": "live", "view": "write", "say": [
     "Append an event. One atomic batch: the entry and a seal over the new head. The page updates over a websocket, no refresh loop.",
     "Entries live fourteen days, seals ninety, so a deleted tail stays detectable after entries expire.",
-    "Entries are created so anyone can extend them. The auditor clicks Renew, and a range query on expiry finds exactly what is about to disappear."
+    "Anyone can extend an entry, not just its owner. The auditor clicks Renew, and a range query on expiry finds exactly what is about to disappear."
   ]},
   { "id": "why", "view": "home", "say": [
     "On Postgres the operator rewrites history. On IPFS there is no creator, no expiry, no query. A subgraph is an indexer someone runs.",

@@ -41,7 +41,7 @@ need(seen.length === 4, `websocket delivered ${seen.length}/4 EntityCreated even
 
 step("2. read back with a fresh public client, filtered by $creator, verify, decrypt");
 const r1 = await readLog(pc, writer, log);
-const v1 = await verify(r1.rows, writer, log, key, r1.foreign);
+const v1 = await verify(r1.rows, writer, log, { key, foreign: r1.foreign, nowBlock: r1.block });
 console.log("query: project = str('%s') AND log = str('%s') AND $creator = addr('%s')", PROJECT, log, writer);
 need(v1.ok && v1.entries.length === 3, `3 entries chain from genesis, issues=[${v1.issues}]`);
 need(v1.entries[1].event?.action === "key.rotate", "payload decrypts to the synthetic event");
@@ -52,16 +52,17 @@ const second = await buildAppend(key, log, head, [ev(4, "role.revoke")]);
 const w2 = await A.executeBatch({ creates: second.creates });
 console.log("tx", `${explorer}/tx/${w2.txHash}`);
 const r2 = await readLog(pc, writer, log);
-const v2 = await verify(r2.rows, writer, log, key);
+const v2 = await verify(r2.rows, writer, log, { key, nowBlock: r2.block });
 need(v2.ok && v2.entries.length === 4 && v2.head?.seq === 4, "log is now 4 entries, still valid");
 
 step("4. readonly: a patch must be rejected");
 try { await A.patchEntity({ entityKey: w1.createdEntities[0], set: { seq: u64(99) } }); need(false, "patch was accepted"); }
-catch (e) { need(/ReadOnly|reject|fail|revert/i.test((e as Error).message), `patch rejected: ${(e as Error).message.slice(0, 80)}`); }
+catch (e) { need(/ReadOnlyEntity|created readonly/i.test((e as Error).message), `patch rejected: ${(e as Error).message.slice(0, 80)}`); }
 
 step("5. lease: extend entries expiring soon (range query on $expiresAt)");
 const keys = await expiringKeys(pc, writer, log, ENTRY_DAYS + 1);
-need(keys.length >= 5, `${keys.length} entities expire within ${ENTRY_DAYS + 1} days`);
+// only the 4 entries (14 day lease) fall inside the window, the 90 day seals do not
+need(keys.length === 4, `${keys.length} entries expire within ${ENTRY_DAYS + 1} days (expected exactly 4)`);
 const ext = await A.executeBatch(renewal(keys, ENTRY_DAYS + 7));
 console.log("tx", `${explorer}/tx/${ext.txHash}`);
 
@@ -69,9 +70,10 @@ step("6. tamper: delete entry 2 of a second log, verify must flag the gap");
 const t = newSecret();
 const tl = await buildAppend(t.key, t.log, genesis(t.log), [ev(1, "a"), ev(2, "b"), ev(3, "c")]);
 const tw = await A.executeBatch({ creates: tl.creates });
-await A.deleteEntity({ entityKey: tw.createdEntities[1] });
+const del = await A.deleteEntity({ entityKey: tw.createdEntities[1] });
+console.log("tamper log", t.log, "\nbatch tx", `${explorer}/tx/${tw.txHash}`, "\ndelete tx", `${explorer}/tx/${del.txHash}`);
 const rt = await readLog(pc, writer, t.log);
-const vt = await verify(rt.rows, writer, t.log, t.key, rt.foreign);
+const vt = await verify(rt.rows, writer, t.log, { key: t.key, foreign: rt.foreign, nowBlock: rt.block });
 console.log("issues:", vt.issues);
 need(!vt.ok && vt.issues.some((i) => /gap/.test(i)), "deleted entry detected as a gap");
 
@@ -85,11 +87,11 @@ if (process.env.SECOND_KEY) {
   });
   console.log("forger", B.account.address, "tx", `${explorer}/tx/${forged.txHash}`);
   const r3 = await readLog(pc, writer, log);
-  need(r3.foreign === 1 && (await verify(r3.rows, writer, log, key, r3.foreign)).ok, "forged entry ignored by $creator filter, counted as foreign");
+  need(r3.foreign === 1 && (await verify(r3.rows, writer, log, { key, foreign: r3.foreign, nowBlock: r3.block })).ok, "forged entry ignored by $creator filter, counted as foreign");
   const ext2 = await B.extendEntity({ entityKey: w1.createdEntities[0], expires: ExpirationTime.fromDays(ENTRY_DAYS + 9) });
   console.log("permissionless extension by non-owner, tx", `${explorer}/tx/${ext2.txHash}`);
 } else console.log("SKIPPED: set SECOND_KEY in .env to a funded wallet");
 
-writeFileSync(new URL("../src/demo.json", import.meta.url), JSON.stringify({ writer, log, key }, null, 2) + "\n");
+writeFileSync(new URL("../src/demo.json", import.meta.url), JSON.stringify({ writer, log, key, tamperLog: { log: t.log, key: t.key } }, null, 2) + "\n");
 console.log("\nDEMO LOG", JSON.stringify({ writer, log }), "\nALL CHECKS PASSED");
 process.exit(0);

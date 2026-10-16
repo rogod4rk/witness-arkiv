@@ -8,7 +8,7 @@ Repo links assume the default branch `main` of https://github.com/rogod4rk/witne
 
 **Project name:** Witness
 
-**Tagline:** Audit logs nobody can quietly rewrite and nobody but you can read, on Arkiv.
+**Tagline:** Tamper-evident audit logs nobody but you can read, on Arkiv.
 
 **Project media:** screenshots of the audit verdict (intact, then a deleted entry flagged as a gap) and one Tiramisu explorer entry showing only a random id, a counter, a hash and ciphertext.
 
@@ -27,7 +27,7 @@ Witness is a tamper-evident audit log for the events a company most wants to kee
 
 After a breach or an insider incident the audit log is the first thing that gets cleaned up. It normally sits in a database that an administrator can edit, so the people who need it most (the auditor, the incident responder, the regulator) are asked to trust an export from the operator they are checking. Moving the log onto a public chain removes the operator, but then every actor name and action is readable by anyone, forever, which most companies cannot accept.
 
-Witness gives the auditor a log that cannot be changed or truncated without the check failing, and gives everyone else nothing readable. Day one change for an auditor: instead of "here is our export", they get a link, run the check themselves against a public RPC, and see exactly which sequence number is missing if something was removed.
+Witness makes the log tamper-evident against everyone but the writer, and against the writer too once an auditor has pinned a checkpoint (an expected head `seq` and hash; the app stores the last intact one and the share link carries it). Everyone else sees nothing readable. Day one change for an auditor: instead of "here is our export", they get a link, run the check themselves against a public RPC, and see exactly which sequence number is missing if something was removed.
 
 ### Challenges I ran into (required)
 
@@ -35,19 +35,19 @@ Witness gives the auditor a log that cannot be changed or truncated without the 
 - **Deleting the tail.** A hash chain catches a removed middle entry but not a removed end. The fix is a second entity type, a seal over the head, written in the same atomic `executeBatch` as the entries and given a longer Entity Expiration (90 days against 14), so a deleted tail leaves a seal that points past the last entry.
 - **Read-only means nobody can fix a mistake, including us.** We accepted that: the flag is the point. Entries are created `readonly` and `permissionlessExtension`, so the auditor can keep them alive without being able to touch them.
 - **No funds for scripted tests.** The faucet needs a browser captcha, so an agent or CI job cannot fund a key. We proved the encoding with an `eth_call` dry run first and logged it in the friction report.
-- **Residual limit we state openly.** The owner of an entity can still delete it. We detect that, we cannot prevent it. If the last entries and the seal are all deleted together the log looks like a shorter valid one, so the verdict prints the head `seq` and `chain` to record out of band.
+- **Residual limits we state openly.** The owner of an entity can still delete it. We detect that, we cannot prevent it. Seals are written by the writer too, so a writer who deletes entries and seals and re-appends a different history still verifies until an auditor pins a checkpoint (expected head `seq` and hash). With a pinned checkpoint the rewrite fails with "history rewritten since checkpoint". Appends have no compare-and-swap, so concurrent writers can fork a log (detected, not prevented).
 
 ## Tracks to enter
 
 **Security (primary), Privacy (second).** One prize per team, so entering both costs nothing, and the "Why this pillar" criterion is scored once per track.
 
 - **Security** is the strongest fit. The rubric's own test for this pillar is "the app shows or filters Arkiv entities by their on-chain creator (`$creator`), not by a field anyone can write", and that is the core mechanism here, with a visible forgery demo (look-alike entities from a second wallet ignored and counted). The people harmed today are auditors and responders misled by an edited log.
-- **Privacy** also holds on its own terms: the explorer shows three attributes (random log id, counter, hash) and ciphertext, no personal data, the key never leaves the client, and entry lifetime is a choice the auditor controls through Lifetime Extension.
+- **Privacy** also holds on its own terms: the explorer shows five attributes (project, type, random log id, counter, hash) and ciphertext, no personal data, the key never leaves the client, and entry lifetime is a choice the auditor controls through Lifetime Extension.
 - Not entered: Open Source (the data contract is documented but this is not a dataset others build on), Censorship Resistance (a reasonable argument exists, but it dilutes the story), Best Indian Use Case (no India-specific user group).
 
 ### Why this pillar, per track (write into each track's answer if the form asks)
 
-**Security:** Who is misled today: an auditor or incident responder handed a log export by the operator under investigation, plus a regulator relying on it. Why today's tools fail them: a database log can be rewritten and an export can be curated, and a copy of a public record can be passed off as the original. What changes from day one: authorship comes from `$creator`, so a forged copy is rejected by construction and counted on screen; entries are `readonly`, so nobody patches one; the chain and the seal expose a deletion as a named gap.
+**Security:** Who is misled today: an auditor or incident responder handed a log export by the operator under investigation, plus a regulator relying on it. Why today's tools fail them: a database log can be rewritten and an export can be curated, and a copy of a public record can be passed off as the original. What changes from day one: authorship comes from `$creator`, so a forged copy is rejected by construction and counted on screen; entries are `readonly`, so nobody patches one (the verifier also flags any trusted row that is not read-only or was updated); the chain and the seal expose a deletion as a named gap; a pinned checkpoint exposes a rewrite by the writer.
 
 **Privacy:** Who is exposed today: the admins and service accounts named in the log, and the company whose access structure it reveals. Putting the log on a public chain in plaintext would leak both. What changes: only ciphertext and counters are public, the decryption key sits in the URL fragment and never reaches a server, and the log owner decides how long entries stay alive.
 
@@ -61,7 +61,7 @@ Witness gives the auditor a log that cannot be changed or truncated without the 
 
 The product is an argument about who can be trusted, and Arkiv supplies the pieces that argument needs, from the chain and not from us.
 
-- **Postgres or our own API:** the operator edits history and the auditor cannot tell. That is the exact failure Witness exists to prevent. Here the writer's identity is the immutable `$creator`, and the reader needs only a public RPC and an address.
+- **Postgres or our own API:** the operator edits history and the auditor cannot tell. Witness catches that for everyone but the writer, and for the writer once a checkpoint is pinned. Here the writer's identity is the immutable `$creator`, and the reader needs only a public RPC and an address.
 - **IPFS:** content addressing proves bytes did not change, but there is no creator (anyone can pin the same bytes), no expiry (so nothing like a short-lived entry with a longer-lived seal), and no query (finding "the entries of log X by writer Y, expiring within 14 days" needs an index someone runs).
 - **A subgraph:** that is an indexer a third party operates and can change. Witness reads the chain's own query, so there is no second system whose honesty the auditor must also check.
 - **Only on Arkiv:** `$creator` as a query filter, creation flags that make an entity read-only yet extendable by anyone, per-entity Entity Expiration, a range query on `$expiresAt` that finds what is about to disappear, and a live event stream, all in one data layer.
@@ -71,13 +71,13 @@ The product is an argument about who can be trusted, and Arkiv supplies the piec
 
 | Feature | How and why | Code |
 |---|---|---|
-| `$creator` via `createdBy()` | Every trusted read is filtered to the writer address, so copied attributes from other wallets cannot enter the verdict. A second unfiltered query counts look-alikes. | `readLog`, https://github.com/rogod4rk/witness-arkiv/blob/main/src/core.ts#L69 |
-| Creation flags `readonly` + `permissionlessExtension` | Entries and seals cannot be patched, and anyone can keep them alive. | `flags`, https://github.com/rogod4rk/witness-arkiv/blob/main/src/core.ts#L38 |
-| `executeBatch` | The new entries and the seal over the new head land together or not at all. | `buildAppend`, https://github.com/rogod4rk/witness-arkiv/blob/main/src/core.ts#L41 |
+| `$creator` via `createdBy()` | Every trusted read is filtered to the writer address, so copied attributes from other wallets cannot enter the verdict. A second unfiltered query counts look-alikes. | `readLog`, https://github.com/rogod4rk/witness-arkiv/blob/main/src/core.ts#L77 |
+| Creation flags `readonly` + `permissionlessExtension` | Entries and seals cannot be patched, and anyone can extend their lifetime. | `flags`, https://github.com/rogod4rk/witness-arkiv/blob/main/src/core.ts#L45 |
+| `executeBatch` | The new entries and the seal over the new head land together or not at all. | `buildAppend`, https://github.com/rogod4rk/witness-arkiv/blob/main/src/core.ts#L48 |
 | Attributes vs payload | Queried values are typed attributes (`project`, `type`, `log`, `seq` as `u64` so it supports ranges, `chain` as `bytes32`). The encrypted event is the payload. | `arkiv/schema.md` |
 | Entity Expiration per type | Entries 14 days, seals 90 days, so a deleted tail stays detectable after entries expire. | `ENTRY_DAYS`, `ANCHOR_DAYS`, https://github.com/rogod4rk/witness-arkiv/blob/main/src/core.ts#L8 |
-| Range query on `$expiresAt` | Finds exactly the entries a renewal must extend. | `expiringKeys`, https://github.com/rogod4rk/witness-arkiv/blob/main/src/core.ts#L130 |
-| Lifetime Extension | The Renew button extends the expiring set as a lease kept alive by the auditor, not only the writer. | `renewal`, https://github.com/rogod4rk/witness-arkiv/blob/main/src/core.ts#L138 |
+| Range query on `$expiresAt` | Finds exactly the entries a renewal must extend. | `expiringKeys`, https://github.com/rogod4rk/witness-arkiv/blob/main/src/core.ts#L185 |
+| Lifetime Extension | The Renew button extends the expiring set as a lease kept alive by the auditor, not only the writer. | `renewal`, https://github.com/rogod4rk/witness-arkiv/blob/main/src/core.ts#L193 |
 | Cursor pagination | `for await` over `select().limit(200)` reads logs longer than one page. | `readLog` |
 | `watchEntityEvents` over `webSocket()`, no `fromBlock` | The verdict re-verifies live when the writer appends, over a real socket instead of polling. | https://github.com/rogod4rk/witness-arkiv/blob/main/src/main.ts#L56 |
 
@@ -119,7 +119,7 @@ Re-run everything yourself:
 ```bash
 git clone https://github.com/rogod4rk/witness-arkiv && cd witness-arkiv
 npm install
-npm test          # offline: chain, tamper, forgery cases (6 tests)
+npm test          # offline: chain, tamper, forgery cases (10 tests)
 npx tsx scripts/readcheck.ts   # read-only checks against Tiramisu, no funds
 npm run key       # creates a throwaway key in .env, prints its address
 # claim 10 GLM for that address at https://hub.arkiv.network/faucet (browser, captcha)

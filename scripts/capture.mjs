@@ -3,6 +3,9 @@
 import { chromium } from "playwright";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
+import dotenv from "dotenv";
+
+dotenv.config({ quiet: true });
 
 const out = process.argv[2];
 const base = process.env.APP_URL ?? "https://arkiv-entry.vercel.app";
@@ -26,18 +29,25 @@ async function show(view) {
       : demo.writer ? `${explorer}/address/${demo.writer}` : explorer;
     await page.goto(url, { waitUntil: "networkidle", timeout: 45000 }).catch(() => {});
     await page.waitForTimeout(2000);
-  } else if (view === "audit") {
+  } else if (view === "audit" || view === "tamper") {
+    const t = view === "tamper" ? demo.tamperLog : demo;
+    if (view === "tamper" && !t?.log) throw new Error("src/demo.json has no tamperLog, run npm run e2e first");
     if (page.url().startsWith(base) && await page.$("#verify")) { /* already on app */ }
     else { await page.goto(base); await zoom(); }
     if (demo.writer) {
-      await page.fill("#w", demo.writer); await page.fill("#l", demo.log); await page.fill("#k", demo.key);
+      await page.fill("#w", demo.writer); await page.fill("#l", t.log); await page.fill("#k", t.key); await page.fill("#c", "");
     }
+    await page.evaluate(() => { if (document.querySelector("#out")) document.querySelector("#out").textContent = ""; });
     await page.click("#verify");
     await page.waitForFunction(() => document.querySelector("#out")?.textContent?.trim(), null, { timeout: 40000 }).catch(() => {});
     await settle();
     await page.evaluate(() => document.querySelector("#out")?.scrollIntoView({ block: "center" }));
   } else if (view === "write") {
-    await page.goto(base); await zoom(); await settle();
+    await page.goto(base);
+    // a funded key from .env, handed to the page as an argument and never logged or written to disk
+    if (process.env.PRIVATE_KEY) { await page.evaluate((k) => localStorage.setItem("witness.pk", k), process.env.PRIVATE_KEY); await page.reload(); }
+    else console.warn("PRIVATE_KEY not set: the write scene will use an unfunded throwaway key");
+    await zoom(); await settle();
     await page.evaluate(() => document.querySelector("#append")?.scrollIntoView({ block: "center" }));
     await page.click("#append");
     await page.waitForFunction(() => /Written|rror|fail|fund/i.test(document.querySelector("#wout")?.textContent ?? ""), null, { timeout: 40000 }).catch(() => {});

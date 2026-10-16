@@ -25,7 +25,7 @@
 <body>
 <main>
   <h1>Witness</h1>
-  <p class="sub">Audit logs nobody can quietly rewrite, and nobody but you can read. Entries are encrypted in your browser, hash-chained, and stored as read-only Arkiv entities on the Tiramisu testnet.</p>
+  <p class="sub">Tamper-evident audit logs, and nobody but you can read them. Entries are encrypted in your browser, hash-chained, and stored as read-only Arkiv entities on the Tiramisu testnet.</p>
 
   <section>
     <h2>Audit a log <span class="note">(read only, no wallet)</span></h2>
@@ -34,6 +34,7 @@
       <div><label>Log id</label><input id="l" /></div>
     </div>
     <label>Decryption key (optional, stays in the URL fragment, never sent anywhere)</label><input id="k" />
+    <label>Checkpoint: expected head as <code>seq:hash</code> (optional). Verify fails if history no longer contains it. Left empty, this browser's last intact head for the log is used. The share link carries it.</label><input id="c" />
     <button id="verify">Verify</button><button class="ghost" id="share">Copy share link</button>
     <div id="out"></div>
   </section>
