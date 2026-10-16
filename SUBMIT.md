@@ -69,17 +69,17 @@ The product is an argument about who can be trusted, and Arkiv supplies the piec
 
 | Feature | How and why | Code |
 |---|---|---|
-| `$creator` via `createdBy()` | Every trusted read is filtered to the writer address, so copied attributes from other wallets cannot enter the verdict. A second unfiltered query counts look-alikes. | `readLog`, https://github.com/rogod4rk/witness-arkiv/blob/b4c736017fba640cffe8d629b14184116c38ad17/src/core.ts#L77 |
-| Creation flags `readonly` + `permissionlessExtension` | Entries and seals cannot be patched (the funded run showed a patch rejected). The `permissionlessExtension` flag is meant to let anyone extend their lifetime; a non-owner extension was not run on chain (needs `SECOND_KEY`). | `flags`, https://github.com/rogod4rk/witness-arkiv/blob/b4c736017fba640cffe8d629b14184116c38ad17/src/core.ts#L45 |
-| `executeBatch` | The new entries and the seal over the new head land together or not at all. | `buildAppend`, https://github.com/rogod4rk/witness-arkiv/blob/b4c736017fba640cffe8d629b14184116c38ad17/src/core.ts#L48 |
+| `$creator` via `createdBy()` | Every trusted read is filtered to the writer address, so copied attributes from other wallets cannot enter the verdict. A second unfiltered query counts look-alikes. | `readLog`, https://github.com/rogod4rk/witness-arkiv/blob/151fc932a442dac8e37a7c22ff55c50a7fd226a9/src/core.ts#L77 |
+| Creation flags `readonly` + `permissionlessExtension` | Entries and seals cannot be patched (the funded run showed a patch rejected). The `permissionlessExtension` flag is meant to let anyone extend their lifetime; a non-owner extension was not run on chain (needs `SECOND_KEY`). | `flags`, https://github.com/rogod4rk/witness-arkiv/blob/151fc932a442dac8e37a7c22ff55c50a7fd226a9/src/core.ts#L45 |
+| `executeBatch` | The new entries and the seal over the new head land together or not at all. | `buildAppend`, https://github.com/rogod4rk/witness-arkiv/blob/151fc932a442dac8e37a7c22ff55c50a7fd226a9/src/core.ts#L48 |
 | Attributes vs payload | Queried values are typed attributes (`project`, `type`, `log`, `seq` as `u64` so it supports ranges, `chain` as `bytes32`). The encrypted event is the payload. | `arkiv/schema.md` |
-| Entity Expiration per type | Entries 14 days, seals 90 days, so a deleted tail stays detectable after entries expire. | `ENTRY_DAYS`, `ANCHOR_DAYS`, https://github.com/rogod4rk/witness-arkiv/blob/b4c736017fba640cffe8d629b14184116c38ad17/src/core.ts#L8 |
-| Range query on `$expiresAt` | Finds exactly the entries a renewal must extend. | `expiringKeys`, https://github.com/rogod4rk/witness-arkiv/blob/b4c736017fba640cffe8d629b14184116c38ad17/src/core.ts#L186 |
-| Lifetime Extension | The Renew button extends the expiring set as a lease. The funded run renewed as the writer; the `permissionlessExtension` flag is what would let an auditor do the same. | `renewal`, https://github.com/rogod4rk/witness-arkiv/blob/b4c736017fba640cffe8d629b14184116c38ad17/src/core.ts#L194 |
+| Entity Expiration per type | Entries 14 days, seals 90 days, so a deleted tail stays detectable after entries expire. | `ENTRY_DAYS`, `ANCHOR_DAYS`, https://github.com/rogod4rk/witness-arkiv/blob/151fc932a442dac8e37a7c22ff55c50a7fd226a9/src/core.ts#L8 |
+| Range query on `$expiresAt` | Finds exactly the entries a renewal must extend. | `expiringKeys`, https://github.com/rogod4rk/witness-arkiv/blob/151fc932a442dac8e37a7c22ff55c50a7fd226a9/src/core.ts#L186 |
+| Lifetime Extension | The Renew button extends the expiring set as a lease. The funded run renewed as the writer; the `permissionlessExtension` flag is what would let an auditor do the same. | `renewal`, https://github.com/rogod4rk/witness-arkiv/blob/151fc932a442dac8e37a7c22ff55c50a7fd226a9/src/core.ts#L194 |
 | Cursor pagination | `for await` over `select().limit(200)` reads logs longer than one page. | `readLog` |
-| `watchEntityEvents` over `webSocket()`, no `fromBlock` | The verdict re-verifies live when the writer appends, over a real socket instead of polling. | https://github.com/rogod4rk/witness-arkiv/blob/b4c736017fba640cffe8d629b14184116c38ad17/src/main.ts#L77 |
+| `watchEntityEvents` over `webSocket()`, no `fromBlock` | The verdict re-verifies live when the writer appends, over a real socket instead of polling. | https://github.com/rogod4rk/witness-arkiv/blob/151fc932a442dac8e37a7c22ff55c50a7fd226a9/src/main.ts#L77 |
 
-**5. Friction report:** https://github.com/rogod4rk/witness-arkiv/blob/b4c736017fba640cffe8d629b14184116c38ad17/arkiv/friction.md
+**5. Friction report:** https://github.com/rogod4rk/witness-arkiv/blob/151fc932a442dac8e37a7c22ff55c50a7fd226a9/arkiv/friction.md
 
 Three issues, each with expected, actual, versions and a repro: (1) the faucet needs a browser captcha, so no script or agent can fund a key (`POST /api/faucet` returns `400 CAPTCHA verification required.`), (2) a zero-balance write fails with `Execution error without revert data` instead of an insufficient funds error, (3) the Live Events docs only show `http()` and never say that `webSocket()` without `fromBlock` opens a real socket (we measured zero polling requests against `eth_newFilter` calls on `http()`). It also records what worked first try, so the report is balanced.
 
@@ -98,7 +98,7 @@ Creation transactions (from the funded `npm run e2e`, full output in VERIFY.md):
 - Tamper log batch: https://tiramisu.explorer.arkiv.network/tx/0x1ec13d2da41c0186384a54923f6d049774e46ff0437972ec70d109a6ec4892c3
 - Delete (the tamper): https://tiramisu.explorer.arkiv.network/tx/0xa7947563a6a13ad94fac673b5b40015ad67d7707833eb92666a9fb758e165a0a
 
-**7. Link to `/arkiv/schema.md`:** https://github.com/rogod4rk/witness-arkiv/blob/b4c736017fba640cffe8d629b14184116c38ad17/arkiv/schema.md
+**7. Link to `/arkiv/schema.md`:** https://github.com/rogod4rk/witness-arkiv/blob/151fc932a442dac8e37a7c22ff55c50a7fd226a9/arkiv/schema.md
 
 **8. How can judges reproduce your Arkiv usage?**
 
