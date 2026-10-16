@@ -65,6 +65,11 @@ const keys = await expiringKeys(pc, writer, log, ENTRY_DAYS + 1);
 need(keys.length === 4, `${keys.length} entries expire within ${ENTRY_DAYS + 1} days (expected exactly 4)`);
 const ext = await A.executeBatch(renewal(keys, ENTRY_DAYS + 7));
 console.log("tx", `${explorer}/tx/${ext.txHash}`);
+const r5 = await readLog(pc, writer, log);
+const v5 = await verify(r5.rows, writer, log, { key, nowBlock: r5.block });
+need(v5.ok, `log still verifies after renewal, issues=[${v5.issues}]`);
+const renewed = r5.rows.filter((r) => r.type === "entry");
+need(renewed.length === 4 && renewed.every((r) => r.updatedAt! > r.createdAt!), "renewed entries have updatedAt > createdAt");
 
 step("6. tamper: delete entry 2 of a second log, verify must flag the gap");
 const t = newSecret();
