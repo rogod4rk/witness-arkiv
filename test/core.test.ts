@@ -87,8 +87,10 @@ test("rows that are not read-only or were patched are flagged", async () => {
   const { log, rows } = await fixture();
   const open_ = rows.map((r, i) => (i === 0 ? { ...r, readonly: false } : r));
   assert.match((await verify(open_, W, log)).issues.join(), /not read-only/);
-  const patched = rows.map((r, i) => (i === 1 ? { ...r, updatedAt: 200n } : r));
+  const patched = rows.map((r, i) => (i === 1 ? { ...r, readonly: undefined, updatedAt: 200n } : r));
   assert.match((await verify(patched, W, log)).issues.join(), /updated after creation/);
+  const renewed = rows.map((r) => ({ ...r, updatedAt: 200n }));
+  assert.deepEqual((await verify(renewed, W, log)).issues, []);
 });
 
 test("natural expiry is reported separately and does not fail the log", async () => {

@@ -1,1 +1,9 @@
-{ "writer": "", "log": "", "key": "", "tamperLog": { "log": "", "key": "" } }
+{
+  "writer": "0xD7532a8170840b922121e6961093b7c5d9215925",
+  "log": "f1622ce195e2a7bc",
+  "key": "0xabafa8f3b23febde0f4aceb6ac46e376254f59d6038131f12ffc8e0649a8fbd0",
+  "tamperLog": {
+    "log": "97c139c402e7c3e9",
+    "key": "0x846034a3b913b051d3464b1db576b7c5ef41f2f05850507756d56275e65bcd55"
+  }
+}

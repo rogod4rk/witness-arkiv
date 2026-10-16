@@ -107,7 +107,8 @@ export async function verify(rows: Row[], writer: string, log: string, opts: Ver
   // trusted rows must be frozen: read-only and never patched
   for (const r of mine) {
     if (r.readonly !== true) issues.push(`${r.type} seq ${r.seq} is not read-only`);
-    if (r.updatedAt !== undefined && r.createdAt !== undefined && r.updatedAt > r.createdAt) issues.push(`${r.type} seq ${r.seq} was updated after creation`);
+    // readonly entities reject content patches on chain; only extensions bump updatedAt, so a bump is only suspicious without readonly
+    if (r.readonly !== true && r.updatedAt !== undefined && r.createdAt !== undefined && r.updatedAt > r.createdAt) issues.push(`${r.type} seq ${r.seq} was updated after creation`);
   }
 
   // a missing seq is normal expiry when the first seal covering it is older than the entry lifetime
