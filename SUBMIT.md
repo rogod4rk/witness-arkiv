@@ -2,8 +2,6 @@
 
 Answers are ordered like the Devfolio form (checklist in the rules repo, `docs/submission-checklist.md`). Answers to the numbered questions are private to organizers and judges, the repo files are public.
 
-Repo links assume the default branch `main` of https://github.com/rogod4rk/witness-arkiv. Replace `main` with the final commit SHA after the last push so the links match what is judged.
-
 ## Standard fields
 
 **Project name:** Witness
