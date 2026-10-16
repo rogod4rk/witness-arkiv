@@ -4,7 +4,7 @@ Run on 2026-10-16, Node 22.14, `@arkiv-network/sdk` 0.8.1, Tiramisu (chain 77385
 
 ## STATUS: funded end-to-end run PASSED on Tiramisu (2026-10-16)
 
-The throwaway writer `0xD7532a8170840b922121e6961093b7c5d9215925` has 0 GLM. The faucet (https://hub.arkiv.network/faucet) requires a wallet sign-in plus a captcha (`POST /api/faucet` returns `400 CAPTCHA verification required.`), so it could not be claimed from a script, and the captcha was not bypassed. Claim 10 GLM for that address in a browser, then run `npm run e2e` and paste its output below. Until then no transaction has been sent, and everything under "Verified" is what could be proven without funds.
+The writer `0xD7532a8170840b922121e6961093b7c5d9215925` was funded from the faucet in a browser (the captcha was not bypassed), and `npm run e2e` ran against Tiramisu. Its output is under "Funded run". The sections below it were captured earlier, before funding.
 
 ## Verified
 
@@ -16,8 +16,15 @@ ok 2 - altered payload is caught
 ok 3 - deleted middle entry is a gap
 ok 4 - deleted tail is caught by the seal
 ok 5 - entries from another creator are ignored and counted
-ok 6 - wrong key fails to decrypt
-# tests 6  pass 6  fail 0
+ok 6 - wrong key is a key problem, not tampering
+ok 7 - key format is validated, with or without 0x
+ok 8 - checkpoint catches a writer rewrite of history
+ok 9 - rows that are not read-only or were patched are flagged
+ok 10 - natural expiry is reported separately and does not fail the log
+ok 11 - an interior deletion is a gap at any age, even when the seal is old
+# tests 11
+# pass 11
+# fail 0
 ```
 
 ### Typecheck and build (`npm run build`)
@@ -102,6 +109,22 @@ demo rows 6 ok true issues []
 tamper rows 3 ok false issues ["gap: seq 2..2 missing (entries deleted)"]
 ```
 
+Interior deletions are flagged as gaps whatever the age of the seal: only a missing oldest prefix, or a log that has fully expired behind a seal older than 14 days, counts as normal expiry (test 11, plus the reviewer's case: delete entry 2 of 4 on day 15 with 1, 3 and 4 alive).
+
 Renewal bumps `updatedAt` on Arkiv, so the "updated after creation" check now only applies to entities that are not readonly (readonly entities reject content patches on chain).
 
 `npm run e2e` checks, in order: websocket delivered 4/4 EntityCreated events for one atomic batch; read by `$creator` verifies and decrypts 3 entries; append continues from the verified head; a patch on a `readonly` entity is rejected; `$expiresAt` range query finds the entities and a batch of extensions lands; deleting an entry of a second log is flagged as a gap; with `SECOND_KEY`, a forged entry is ignored and counted, and a non-owner extends an entry (permissionless extension). It prints explorer links for every transaction and writes the demo log into `src/demo.json`.
+
+## Demo renewal: `npx tsx scripts/renew-demo.ts` (2026-10-16)
+
+Extends every entry of both demo logs by 60 days so the judges' demo outlives judging. The 90 day seals already have more than 60 days left, and the engine rejects an extension that does not move the expiry later, so they are skipped. Then it re-reads both logs and asserts the verdicts.
+
+```
+f1622ce195e2a7bc 6 rows, 4 to extend so far
+97c139c402e7c3e9 3 rows, 6 to extend so far
+renew tx https://tiramisu.explorer.arkiv.network/tx/0x32964937e83a5588d6bfcdbec2035f56b7c58c71930a40d2934f4ebbb5545456 extended 6
+demo log rows 6 ok true []
+ok: demo log verifies ok
+tamper log rows 3 ok false [ 'gap: seq 2..2 missing (entries deleted)' ]
+ok: tamper log is flagged with a gap
+```
