@@ -1,6 +1,6 @@
 # Devfolio submission draft: Witness
 
-Answers are ordered like the Devfolio form (checklist in the rules repo, `docs/submission-checklist.md`). Items marked **FILL** need a value that only exists after the funded `npm run e2e` run or a decision from the team. Answers to the numbered questions are private to organizers and judges, the repo files are public.
+Answers are ordered like the Devfolio form (checklist in the rules repo, `docs/submission-checklist.md`). Answers to the numbered questions are private to organizers and judges, the repo files are public.
 
 Repo links assume the default branch `main` of https://github.com/rogod4rk/witness-arkiv. Replace `main` with the final commit SHA after the last push so the links match what is judged.
 
@@ -15,9 +15,9 @@ Repo links assume the default branch `main` of https://github.com/rogod4rk/witne
 **Links:**
 - Repo: https://github.com/rogod4rk/witness-arkiv
 - Live app: https://arkiv-entry.vercel.app
-- Demo video (3 min or less): **FILL** upload `demo.mp4` (built by `scripts/make-video.sh`) and paste the link
+- Demo video (2:07): https://arkiv-entry.vercel.app/demo.mp4
 
-**Builders:** **FILL**
+**Builders:** rogo (GitHub rogod4rk)
 
 ### Description
 
@@ -55,7 +55,7 @@ Witness makes the log tamper-evident against everyone but the writer, and agains
 
 **1. Live app URL:** https://arkiv-entry.vercel.app
 
-**2. Does any team member hold Indian nationality?** **FILL** (team decision, not inferred)
+**2. Does any team member hold Indian nationality?** No
 
 **3. Why Arkiv?**
 
@@ -91,9 +91,13 @@ Three issues, each with expected, actual, versions and a repro: (1) the faucet n
 |---|---|
 | `0xD7532a8170840b922121e6961093b7c5d9215925` | Writer of the seeded demo logs, created by `npm run e2e`. This is the `$creator` the auditor trusts. |
 | Browser throwaway key (one per visitor, shown in the app) | Writer of logs a visitor creates in the live app. |
-| **FILL** second wallet, only if `SECOND_KEY` was set for the e2e | Forger and permissionless extender, to demonstrate the `$creator` filter and extension by a non-owner. |
 
-Creation transactions: **FILL** paste the explorer links printed by `npm run e2e` (`https://tiramisu.explorer.arkiv.network/tx/<hash>`), at least the first batch, the delete, the renewal and, if run, the forged entity.
+Creation transactions (from the funded `npm run e2e`, full output in VERIFY.md):
+- First atomic batch (3 entries + seal): https://tiramisu.explorer.arkiv.network/tx/0xbd4089545251f222dc97d420646504d9c157f45b5c7f8b8d94736cdb33ff8350
+- Append: https://tiramisu.explorer.arkiv.network/tx/0x23e89c06232686d42fcd6bf54b07f2ac024b44aa9bcc7e57269d50527004ca94
+- Renewal of expiring entries: https://tiramisu.explorer.arkiv.network/tx/0xdcb50c5ad29a95107b6784416ccd2a4620871b69530229645c82f0e39d7a5332
+- Tamper log batch: https://tiramisu.explorer.arkiv.network/tx/0x1ec13d2da41c0186384a54923f6d049774e46ff0437972ec70d109a6ec4892c3
+- Delete (the tamper): https://tiramisu.explorer.arkiv.network/tx/0xa7947563a6a13ad94fac673b5b40015ad67d7707833eb92666a9fb758e165a0a
 
 **7. Link to `/arkiv/schema.md`:** https://github.com/rogod4rk/witness-arkiv/blob/main/arkiv/schema.md
 
@@ -101,10 +105,10 @@ Creation transactions: **FILL** paste the explorer links printed by `npm run e2e
 
 Fastest, no setup and no funds:
 
-1. Open https://arkiv-entry.vercel.app. The demo log is prefilled (writer `0xD7532a8170840b922121e6961093b7c5d9215925`, log id and key from `src/demo.json`: **FILL log id**). Click Verify. The verdict reads straight from Arkiv, no backend of ours.
+1. Open https://arkiv-entry.vercel.app. The demo log is prefilled (writer `0xD7532a8170840b922121e6961093b7c5d9215925`, log id and key from `src/demo.json`: `f1622ce195e2a7bc`). Click Verify. The verdict reads straight from Arkiv, no backend of ours.
 2. Open the same writer on the explorer: https://tiramisu.explorer.arkiv.network/address/0xD7532a8170840b922121e6961093b7c5d9215925. Each entry shows a random log id, a counter, a hash and ciphertext.
 3. Clear the key field and Verify again: the chain still verifies, the entries stay unreadable.
-4. The seeded second log has a deleted entry: Verify it (**FILL** its log id) and the verdict names the missing sequence number.
+4. The seeded second log has a deleted entry: Verify it (log id `97c139c402e7c3e9`) and the verdict names the missing sequence number.
 
 The exact query the app runs (paste the writer and log id):
 
@@ -127,29 +131,28 @@ npm run e2e       # writes, reads by $creator, tries a patch (must fail), renews
 npm run dev       # app at http://localhost:5173
 ```
 
-**9. Pre-existing work you reused:** None. Everything, including the Arkiv integration and the verification logic, was built between 9 and 18 October 2026 (first commit 16 October). Libraries only: `@arkiv-network/sdk` 0.8.1, `viem`, Vite, TypeScript. **FILL** confirm no earlier baseline commit exists.
+**9. Pre-existing work you reused:** None. Everything, including the Arkiv integration and the verification logic, was built between 9 and 18 October 2026 (first commit 16 October). Libraries only: `@arkiv-network/sdk` 0.8.1, `viem`, Vite, TypeScript. First commit: 6ff59ed, 16 Oct 2026. No earlier baseline exists.
 
 **10. Arkiv surfaces you used:** TypeScript SDK, Direct JSON-RPC (`eth_chainId`, `eth_call` dry run of a batch before spending funds, in `scripts/readcheck.ts` and `scripts/dryrun.ts`), WebSocket events, Docs, Faucet, Block Explorer.
 
 **11. If you selected Other:** leave blank.
 
-**12. How long after you started did you write your first Arkiv entity?** **FILL** (the first write waits on faucet funds; pick the true bucket from the first e2e transaction timestamp against the first commit)
+**12. How long after you started did you write your first Arkiv entity?** Under 4 hours. First commit 14:32 UTC, first entity 18:03 UTC, both on 16 Oct. Most of that gap was waiting on the captcha faucet.
 
 **13. Which LLMs did you use?** Claude (Anthropic) through Claude Code, for planning, code and docs drafting. All output was reviewed and run by the team.
 
 **14. The one thing Arkiv should improve first:** A headless way to fund a testnet key. Every agent or CI based builder hits the captcha wall before writing a single entity, and the failure that follows (`Execution error without revert data`) does not say the cause is an empty balance. An unauthenticated, rate-limited testnet faucet endpoint, plus an `insufficient funds` error from the SDK, would remove the first hour of friction for everyone.
 
-**15. Open to a 20-minute feedback call?** **FILL** (team decision)
+**15. Open to a 20-minute feedback call?** Yes
 
 **16. Built between 9 and 18 October, pre-existing work disclosed:** tick (answer 9 is "None").
 
 **17. Repo public under MIT, every link accessible:** tick after confirming the repo is public, `LICENSE` is MIT (it is in the repo), the demo video link opens logged out, and the live URL opens in a private window.
 
-**18. Devcon 8 in Mumbai:** **FILL** (optional)
+**18. Devcon 8 in Mumbai:** Not attending
 
 ## Before pressing submit
 
 - Funded `npm run e2e` has run and `src/demo.json` holds the writer, log id and key; the app is redeployed so the prefilled demo log verifies.
-- Replace every **FILL**, re-run `scripts/make-video.sh`, upload `demo.mp4`, check it is 3 minutes or less.
 - Push, then swap `main` in the links for the judged commit SHA. Never rewrite history after the deadline (18 Oct 2026, 23:59 London).
 - No private keys, key material or credentialed RPC URLs in any answer. The demo key in `src/demo.json` encrypts synthetic data only.
