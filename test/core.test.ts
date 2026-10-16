@@ -110,3 +110,21 @@ test("natural expiry is reported separately and does not fail the log", async ()
   // the same loss inside the entry lifetime is still tampering
   assert.equal((await verify(gone, W, log, { nowBlock: 100n + days(1) })).ok, false);
 });
+
+test("an interior deletion is a gap at any age, even when the seal is old", async () => {
+  const { log, key } = newSecret();
+  const { creates } = await buildAppend(key, log, genesis(log), [ev(1), ev(2), ev(3), ev(4)]);
+  const rows: Row[] = creates.map((c, i) => ({
+    key: `0x${String(i).padStart(64, "0")}`, creator: W, type: c.attributes.type.value as string,
+    seq: Number(c.attributes.seq.value), chain: c.attributes.chain.value as `0x${string}`, payload: c.payload,
+    createdAt: 100n, updatedAt: 200n, readonly: true, // entries renewed, so 1, 3 and 4 are still alive on day 15
+  }));
+  const day15 = 100n + days(15);
+  const v = await verify(rows.filter((r) => !(r.type === "entry" && r.seq === 2)), W, log, { key, nowBlock: day15 });
+  assert.equal(v.ok, false);
+  assert.match(v.issues.join(), /gap: seq 2\.\.2 missing/);
+  // a deleted tail entry with its predecessors alive is also a deletion, whatever the seal's age
+  const t = await verify(rows.filter((r) => !(r.type === "entry" && r.seq === 4)), W, log, { key, nowBlock: day15 });
+  assert.match(t.issues.join(), /tail deleted/);
+  assert.equal((await verify(rows, W, log, { key, nowBlock: day15 })).ok, true);
+});

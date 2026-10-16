@@ -111,7 +111,8 @@ export async function verify(rows: Row[], writer: string, log: string, opts: Ver
     if (r.readonly !== true && r.updatedAt !== undefined && r.createdAt !== undefined && r.updatedAt > r.createdAt) issues.push(`${r.type} seq ${r.seq} was updated after creation`);
   }
 
-  // a missing seq is normal expiry when the first seal covering it is older than the entry lifetime
+  // Normal expiry is a missing prefix or a fully expired log, and only when the first seal covering the seq is older than
+  // the entry lifetime. A hole with a surviving entry before it is a deletion at any age.
   const expired = new Set<number>();
   const aged = (seq: number) => {
     const a = anchors.find((x) => x.seq >= seq);
@@ -135,8 +136,7 @@ export async function verify(rows: Row[], writer: string, log: string, opts: Ver
       if (r.seq > 1) { const m = lost(1, r.seq - 1); if (m) issues.push(`entries ${m} are gone (deleted), checking from seq ${r.seq}`); }
       else { checked = true; if (link(genesis(log).chain, 1, r.payload) !== r.chain) issues.push(`seq 1 does not chain from the log genesis`); }
     } else if (r.seq !== last + 1) {
-      const m = lost(last + 1, r.seq - 1);
-      if (m) issues.push(`gap: seq ${m} missing (entries deleted)`);
+      issues.push(`gap: seq ${last + 1}..${r.seq - 1} missing (entries deleted)`);
     } else {
       checked = true;
       if (link(prev, r.seq, r.payload) !== r.chain) issues.push(`seq ${r.seq} does not chain from seq ${last}`);
@@ -158,7 +158,7 @@ export async function verify(rows: Row[], writer: string, log: string, opts: Ver
     const e = bySeq.get(a.seq);
     if (!e) {
       if (a.seq > last) {
-        const m = lost(last + 1, a.seq);
+        const m = last ? `${last + 1}..${a.seq}` : lost(1, a.seq);
         if (m) issues.push(`seal at seq ${a.seq} but the log ends at ${last} (tail deleted)`);
       }
     } else if (e.chain !== a.chain) issues.push(`seal at seq ${a.seq} disagrees with the entry chain`);
