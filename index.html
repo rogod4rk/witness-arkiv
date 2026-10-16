@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Witness: tamper-evident, private audit logs on Arkiv</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0d1117; --card:#161b22; --line:#30363d; --fg:#e6edf3; --dim:#8b949e; --ok:#3fb950; --bad:#f85149; --acc:#58a6ff; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 ui-sans-serif,system-ui,sans-serif; }
+    main { max-width:880px; margin:0 auto; padding:32px 20px 80px; }
+    h1 { margin:0 0 4px; font-size:28px; } h2 { margin:0 0 12px; font-size:17px; }
+    p.sub { color:var(--dim); margin:0 0 24px; }
+    section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:18px; }
+    label { display:block; font-size:12px; color:var(--dim); margin:10px 0 3px; }
+    input, textarea { width:100%; background:var(--bg); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:8px; font:13px ui-monospace,monospace; }
+    button { background:var(--acc); color:#04121f; border:0; border-radius:6px; padding:8px 14px; font-weight:600; cursor:pointer; margin:12px 8px 0 0; }
+    button:disabled { opacity:.5; cursor:wait; } button.ghost { background:transparent; color:var(--acc); border:1px solid var(--line); }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .verdict { font-weight:700; font-size:18px; margin:14px 0 6px; } .ok { color:var(--ok); } .bad { color:var(--bad); }
+    ul { margin:6px 0; padding-left:18px; } li { margin:3px 0; } code { font:12px ui-monospace,monospace; color:var(--dim); word-break:break-all; }
+    .note { color:var(--dim); font-size:13px; } a { color:var(--acc); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Witness</h1>
+  <p class="sub">Audit logs nobody can quietly rewrite, and nobody but you can read. Entries are encrypted in your browser, hash-chained, and stored as read-only Arkiv entities on the Tiramisu testnet.</p>
+
+  <section>
+    <h2>Audit a log <span class="note">(read only, no wallet)</span></h2>
+    <div class="row">
+      <div><label>Writer address (the only trusted <code>$creator</code>)</label><input id="w" /></div>
+      <div><label>Log id</label><input id="l" /></div>
+    </div>
+    <label>Decryption key (optional, stays in the URL fragment, never sent anywhere)</label><input id="k" />
+    <button id="verify">Verify</button><button class="ghost" id="share">Copy share link</button>
+    <div id="out"></div>
+  </section>
+
+  <section>
+    <h2>Write to a log <span class="note">(throwaway testnet key kept in this browser)</span></h2>
+    <p class="note" id="acct"></p>
+    <div class="row">
+      <div><label>Actor (use synthetic data only)</label><input id="actor" value="svc-deploy" /></div>
+      <div><label>Action</label><input id="action" value="role.grant" /></div>
+    </div>
+    <label>Detail</label><input id="detail" value="synthetic: granted admin to svc-reports" />
+    <button id="append">Append (entry + seal, one atomic batch)</button>
+    <button class="ghost" id="fresh">Start a new log</button>
+    <button class="ghost" id="renew">Renew retention of entries expiring soon</button>
+    <div id="wout" class="note"></div>
+  </section>
+</main>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
