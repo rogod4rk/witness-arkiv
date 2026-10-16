@@ -1,0 +1,31 @@
+[
+  { "id": "problem", "view": "home", "say": [
+    "This is a company's admin audit log: who granted access, who rotated a key, who exported data.",
+    "Normally it lives in a database an admin can edit. After an incident, the log is the first thing that gets cleaned up, and the auditor has to trust the operator's export.",
+    "Witness fixes that without publishing anything readable."
+  ]},
+  { "id": "explorer", "view": "explorer", "say": [
+    "Here is one entry on Arkiv's explorer. Three attributes: a random log id, a counter, and a hash.",
+    "The payload is ciphertext. No names, no actions. The key never touched a server, it is in the URL fragment of the share link."
+  ]},
+  { "id": "audit", "view": "audit", "say": [
+    "The auditor needs only the writer's address and the log id. The app reads straight from Arkiv, no backend of ours.",
+    "It filters by creator, the immutable on-chain creator, so it only trusts entities that wallet wrote.",
+    "It recomputes the hash chain from genesis. With the key, the entries decrypt. Without it, they are just bytes."
+  ]},
+  { "id": "tamper", "view": "audit", "say": [
+    "Anyone can copy our attributes onto their own entity. A look-alike from another wallet is ignored and counted, because its creator is not the writer.",
+    "Entries are read-only, so nobody can patch them. The owner could still delete one, and the check shows a gap at that sequence number.",
+    "The seal catches a deleted tail too."
+  ]},
+  { "id": "live", "view": "write", "say": [
+    "Append an event. One atomic batch: the entry and a seal over the new head. The page updates over a websocket, no refresh loop.",
+    "Entries live fourteen days, seals ninety, so a deleted tail stays detectable after entries expire.",
+    "Entries are created so anyone can extend them. The auditor clicks Renew, and a range query on expiry finds exactly what is about to disappear."
+  ]},
+  { "id": "why", "view": "home", "say": [
+    "On Postgres the operator rewrites history. On IPFS there is no creator, no expiry, no query. A subgraph is an indexer someone runs.",
+    "Here the creator, the read-only flag, the expiry and the query all come from the chain. What stays off Arkiv: the key and the plaintext.",
+    "Witness, on Arkiv."
+  ]}
+]
