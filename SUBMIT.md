@@ -31,7 +31,7 @@ Witness makes the log tamper-evident against everyone but the writer, and agains
 
 - **Forgery by attribute copy.** Attributes are just data, so anyone can create an entity with our `project` and `log` values. Trust had to come from the one thing nobody can fake, the on-chain `$creator`, so every trusted read goes through `createdBy(writer)`. The unfiltered query is run only to count look-alikes, which the UI shows rather than hides.
 - **Deleting the tail.** A hash chain catches a removed middle entry but not a removed end. The fix is a second entity type, a seal over the head, written in the same atomic `executeBatch` as the entries and given a longer Entity Expiration (90 days against 14), so a deleted tail leaves a seal that points past the last entry.
-- **Read-only means nobody can fix a mistake, including us.** We accepted that: the flag is the point. Entries are created `readonly` and `permissionlessExtension`, so the auditor can keep them alive without being able to touch them.
+- **Read-only means nobody can fix a mistake, including us.** We accepted that: the flag is the point. Entries are created `readonly` and `permissionlessExtension`, so the flag lets anyone, an auditor included, extend their lifetime without being able to touch the content (the funded run extended them as the writer; a non-owner extension was not demonstrated on chain).
 - **No funds for scripted tests.** The faucet needs a browser captcha, so an agent or CI job cannot fund a key. We proved the encoding with an `eth_call` dry run first and logged it in the friction report.
 - **Residual limits we state openly.** The owner of an entity can still delete it. We detect that, we cannot prevent it. Seals are written by the writer too, so a writer who deletes entries and seals and re-appends a different history still verifies until an auditor pins a checkpoint (expected head `seq` and hash). With a pinned checkpoint the rewrite fails with "history rewritten since checkpoint". Appends have no compare-and-swap, so concurrent writers can fork a log (detected, not prevented).
 
@@ -40,14 +40,14 @@ Witness makes the log tamper-evident against everyone but the writer, and agains
 **Security (primary), Privacy (second).** One prize per team, so entering both costs nothing, and the "Why this pillar" criterion is scored once per track.
 
 - **Security** is the strongest fit. The rubric's own test for this pillar is "the app shows or filters Arkiv entities by their on-chain creator (`$creator`), not by a field anyone can write", and that is the core mechanism here: every trusted read uses `createdBy(writer)`, and the UI counts look-alike entities from other wallets instead of trusting them. The people harmed today are auditors and responders misled by an edited log.
-- **Privacy** also holds on its own terms: the explorer shows five attributes (project, type, random log id, counter, hash) and ciphertext, no personal data, the key never leaves the client, and entry lifetime is a choice the auditor controls through Lifetime Extension.
+- **Privacy** also holds on its own terms: the explorer shows five attributes (project, type, random log id, counter, hash) and ciphertext, no personal data, the key never leaves the client, and entry lifetime can be extended by a third party through the `permissionlessExtension` flag.
 - Not entered: Open Source (the data contract is documented but this is not a dataset others build on), Censorship Resistance (a reasonable argument exists, but it dilutes the story), Best Indian Use Case (no India-specific user group).
 
 ### Why this pillar, per track (write into each track's answer if the form asks)
 
-**Security:** Who is misled today: an auditor or incident responder handed a log export by the operator under investigation, plus a regulator relying on it. Why today's tools fail them: a database log can be rewritten and an export can be curated, and a copy of a public record can be passed off as the original. What changes from day one: authorship comes from `$creator`, so a forged copy is rejected by construction and counted on screen (shown in unit tests; the funded run did not seed a forged entity, since that needs a second funded wallet); entries are `readonly`, so nobody patches one (the verifier also flags any trusted row that is not read-only); the chain and the seal expose a deletion as a named gap; a pinned checkpoint exposes a rewrite by the writer.
+**Security:** Who is misled today: an auditor or incident responder handed a log export by the operator under investigation, plus a regulator relying on it. Why today's tools fail them: a database log can be rewritten and an export can be curated, and a copy of a public record can be passed off as the original. What changes from day one: authorship comes from `$creator`, so a forged copy is rejected by construction and counted on screen (shown in unit tests; the funded run did not seed a forged entity, since that needs a second funded wallet); entries are `readonly`, so nobody patches one (the verifier also flags any trusted row that is not read-only); the chain and the seal expose a deletion as a named gap, and an interior deletion is flagged whatever the age of the seal (only a missing oldest prefix, or a log that has fully expired behind an old seal, counts as normal expiry); a pinned checkpoint exposes a rewrite by the writer.
 
-**Privacy:** Who is exposed today: the admins and service accounts named in the log, and the company whose access structure it reveals. Putting the log on a public chain in plaintext would leak both. What changes: only ciphertext and counters are public, the decryption key sits in the URL fragment and never reaches a server, and anyone, typically the auditor, can keep entries alive through Lifetime Extension without being able to change them.
+**Privacy:** Who is exposed today: the admins and service accounts named in the log, and the company whose access structure it reveals. Putting the log on a public chain in plaintext would leak both. What changes: only ciphertext and counters are public, the decryption key sits in the URL fragment and never reaches a server, and the `permissionlessExtension` flag lets anyone, typically the auditor, extend entries without being able to change them (not demonstrated on chain by a non-owner).
 
 ## Our questions
 
@@ -69,17 +69,17 @@ The product is an argument about who can be trusted, and Arkiv supplies the piec
 
 | Feature | How and why | Code |
 |---|---|---|
-| `$creator` via `createdBy()` | Every trusted read is filtered to the writer address, so copied attributes from other wallets cannot enter the verdict. A second unfiltered query counts look-alikes. | `readLog`, https://github.com/rogod4rk/witness-arkiv/blob/a66a76dc0e6caecdad67b66e7969ee22e175f579/src/core.ts#L77 |
-| Creation flags `readonly` + `permissionlessExtension` | Entries and seals cannot be patched, and anyone can extend their lifetime. | `flags`, https://github.com/rogod4rk/witness-arkiv/blob/a66a76dc0e6caecdad67b66e7969ee22e175f579/src/core.ts#L45 |
-| `executeBatch` | The new entries and the seal over the new head land together or not at all. | `buildAppend`, https://github.com/rogod4rk/witness-arkiv/blob/a66a76dc0e6caecdad67b66e7969ee22e175f579/src/core.ts#L48 |
+| `$creator` via `createdBy()` | Every trusted read is filtered to the writer address, so copied attributes from other wallets cannot enter the verdict. A second unfiltered query counts look-alikes. | `readLog`, https://github.com/rogod4rk/witness-arkiv/blob/ee8592c8d774b33ff30a794c744f34f9f1010db4/src/core.ts#L77 |
+| Creation flags `readonly` + `permissionlessExtension` | Entries and seals cannot be patched (the funded run showed a patch rejected). The `permissionlessExtension` flag is meant to let anyone extend their lifetime; a non-owner extension was not run on chain (needs `SECOND_KEY`). | `flags`, https://github.com/rogod4rk/witness-arkiv/blob/ee8592c8d774b33ff30a794c744f34f9f1010db4/src/core.ts#L45 |
+| `executeBatch` | The new entries and the seal over the new head land together or not at all. | `buildAppend`, https://github.com/rogod4rk/witness-arkiv/blob/ee8592c8d774b33ff30a794c744f34f9f1010db4/src/core.ts#L48 |
 | Attributes vs payload | Queried values are typed attributes (`project`, `type`, `log`, `seq` as `u64` so it supports ranges, `chain` as `bytes32`). The encrypted event is the payload. | `arkiv/schema.md` |
-| Entity Expiration per type | Entries 14 days, seals 90 days, so a deleted tail stays detectable after entries expire. | `ENTRY_DAYS`, `ANCHOR_DAYS`, https://github.com/rogod4rk/witness-arkiv/blob/a66a76dc0e6caecdad67b66e7969ee22e175f579/src/core.ts#L8 |
-| Range query on `$expiresAt` | Finds exactly the entries a renewal must extend. | `expiringKeys`, https://github.com/rogod4rk/witness-arkiv/blob/a66a76dc0e6caecdad67b66e7969ee22e175f579/src/core.ts#L185 |
-| Lifetime Extension | The Renew button extends the expiring set as a lease kept alive by the auditor, not only the writer. | `renewal`, https://github.com/rogod4rk/witness-arkiv/blob/a66a76dc0e6caecdad67b66e7969ee22e175f579/src/core.ts#L193 |
+| Entity Expiration per type | Entries 14 days, seals 90 days, so a deleted tail stays detectable after entries expire. | `ENTRY_DAYS`, `ANCHOR_DAYS`, https://github.com/rogod4rk/witness-arkiv/blob/ee8592c8d774b33ff30a794c744f34f9f1010db4/src/core.ts#L8 |
+| Range query on `$expiresAt` | Finds exactly the entries a renewal must extend. | `expiringKeys`, https://github.com/rogod4rk/witness-arkiv/blob/ee8592c8d774b33ff30a794c744f34f9f1010db4/src/core.ts#L186 |
+| Lifetime Extension | The Renew button extends the expiring set as a lease. The funded run renewed as the writer; the `permissionlessExtension` flag is what would let an auditor do the same. | `renewal`, https://github.com/rogod4rk/witness-arkiv/blob/ee8592c8d774b33ff30a794c744f34f9f1010db4/src/core.ts#L194 |
 | Cursor pagination | `for await` over `select().limit(200)` reads logs longer than one page. | `readLog` |
-| `watchEntityEvents` over `webSocket()`, no `fromBlock` | The verdict re-verifies live when the writer appends, over a real socket instead of polling. | https://github.com/rogod4rk/witness-arkiv/blob/a66a76dc0e6caecdad67b66e7969ee22e175f579/src/main.ts#L56 |
+| `watchEntityEvents` over `webSocket()`, no `fromBlock` | The verdict re-verifies live when the writer appends, over a real socket instead of polling. | https://github.com/rogod4rk/witness-arkiv/blob/ee8592c8d774b33ff30a794c744f34f9f1010db4/src/main.ts#L77 |
 
-**5. Friction report:** https://github.com/rogod4rk/witness-arkiv/blob/a66a76dc0e6caecdad67b66e7969ee22e175f579/arkiv/friction.md
+**5. Friction report:** https://github.com/rogod4rk/witness-arkiv/blob/ee8592c8d774b33ff30a794c744f34f9f1010db4/arkiv/friction.md
 
 Three issues, each with expected, actual, versions and a repro: (1) the faucet needs a browser captcha, so no script or agent can fund a key (`POST /api/faucet` returns `400 CAPTCHA verification required.`), (2) a zero-balance write fails with `Execution error without revert data` instead of an insufficient funds error, (3) the Live Events docs only show `http()` and never say that `webSocket()` without `fromBlock` opens a real socket (we measured zero polling requests against `eth_newFilter` calls on `http()`). It also records what worked first try, so the report is balanced.
 
@@ -94,10 +94,11 @@ Creation transactions (from the funded `npm run e2e`, full output in VERIFY.md):
 - First atomic batch (3 entries + seal): https://tiramisu.explorer.arkiv.network/tx/0xbd4089545251f222dc97d420646504d9c157f45b5c7f8b8d94736cdb33ff8350
 - Append: https://tiramisu.explorer.arkiv.network/tx/0x23e89c06232686d42fcd6bf54b07f2ac024b44aa9bcc7e57269d50527004ca94
 - Renewal of expiring entries: https://tiramisu.explorer.arkiv.network/tx/0xdcb50c5ad29a95107b6784416ccd2a4620871b69530229645c82f0e39d7a5332
+- Demo logs renewed by 60 days (`scripts/renew-demo.ts`): https://tiramisu.explorer.arkiv.network/tx/0x32964937e83a5588d6bfcdbec2035f56b7c58c71930a40d2934f4ebbb5545456
 - Tamper log batch: https://tiramisu.explorer.arkiv.network/tx/0x1ec13d2da41c0186384a54923f6d049774e46ff0437972ec70d109a6ec4892c3
 - Delete (the tamper): https://tiramisu.explorer.arkiv.network/tx/0xa7947563a6a13ad94fac673b5b40015ad67d7707833eb92666a9fb758e165a0a
 
-**7. Link to `/arkiv/schema.md`:** https://github.com/rogod4rk/witness-arkiv/blob/a66a76dc0e6caecdad67b66e7969ee22e175f579/arkiv/schema.md
+**7. Link to `/arkiv/schema.md`:** https://github.com/rogod4rk/witness-arkiv/blob/ee8592c8d774b33ff30a794c744f34f9f1010db4/arkiv/schema.md
 
 **8. How can judges reproduce your Arkiv usage?**
 
@@ -121,7 +122,7 @@ Re-run everything yourself:
 ```bash
 git clone https://github.com/rogod4rk/witness-arkiv && cd witness-arkiv
 npm install
-npm test          # offline: chain, tamper, forgery cases (10 tests)
+npm test          # offline: chain, tamper, forgery cases (11 tests)
 npx tsx scripts/readcheck.ts   # read-only checks against Tiramisu, no funds
 npm run key       # creates a throwaway key in .env, prints its address
 # claim 10 GLM for that address at https://hub.arkiv.network/faucet (browser, captcha)
